@@ -103,7 +103,7 @@ class EchoStateNetwork:
 
         for k in range(n):
             for j in range(n):
-                if np.random.rand() < probability_of_edge and k != j:
+                if np.random.rand() < probability_of_edge and W[k, j] == 0 and k != j:
                     W[k, j] = np.random.rand() - 0.5
         max_eigval = np.max(np.abs(np.linalg.eigvals(W)))
         return W * (spectral_radius / max_eigval) if max_eigval > 0 else W
@@ -187,11 +187,11 @@ class EchoStateNetwork:
         self.state = np.zeros(self.n)
         self.state[nodes1] = 1
         for k in range(self.n):
-            if self.state[nodes2] == 1:
+            if any(self.state[nodes2]):
                 return k
             self.state = np.where(self.connectivity @ self.state !=0, 1, 0) 
         
-        return np.inf
+        return self.n+1
 
 
 def compute_averages(states, obj_nodes, proxy_nodes):
