@@ -126,6 +126,7 @@ class EchoStateNetwork:
         """
         new_state = (1-self.alpha) * self.state + self.alpha* np.tanh(self.W @ self.state)
         self.state = new_state
+        print(agent_nodes,new_state[agent_nodes], agent_values)
         
         return self.state
 
