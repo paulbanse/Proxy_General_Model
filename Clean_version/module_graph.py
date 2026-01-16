@@ -24,8 +24,11 @@ def outputgraph(adjacency_matrix):
         if (b,a) in search_edges and a!=b:
             c['key'] = min(a,b)*1000 + max(a,b)
     gr = nx.DiGraph()
+    gr.add_nodes_from(range(adjacency_matrix.shape[0]))
     gr.add_edges_from(edges)
     return gr
+
+
 
 def plot_para(param_ESN, action_node, proxy_node):
     esn = module_ESN.EchoStateNetwork(param_ESN['n'],  spectral_radius=param_ESN['spectral_radius'], alpha = param_ESN['alpha'], 

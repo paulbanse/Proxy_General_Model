@@ -36,8 +36,10 @@ class EchoStateNetwork:
         self.action_nodes = [k for k in range(number_of_action_nodes)]
         self.spectral_radius = spectral_radius
         self.avg_number_of_edges = avg_number_of_edges
-        if seed is not None:
-            np.random.seed(seed)
+        if seed is None:
+            seed = np.random.randint(0, 1000000)
+        self.seed = seed
+        np.random.seed(seed)
         self.W = self._initialize_useful_reservoir()
         self.connectivity = np.where(self.W !=0, 1, 0)
         self.state = np.zeros(n)
@@ -136,6 +138,9 @@ class EchoStateNetwork:
             self.state = np.where(self.connectivity @ self.state !=0, 1, 0) 
         
         return self.n+1
+    
+    def reset_seed(self):
+        np.random.seed(self.seed)
 
 
 def compute_averages(states, obj_nodes, proxy_nodes):

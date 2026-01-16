@@ -20,6 +20,7 @@ def optimize_node(esn,  trials, proxy_nodes, is_goal=False):
         """
         proxy_samples    = np.asarray([])
         goal_samples    = np.asarray([])
+        esn.reset_seed()
         for j in range(trials): 
             action_node_values = module_ESN.get_directed_action_value(action_value , agent_action, actionsize = len(esn.action_nodes))
             states = esn.run(agent_values=action_node_values)
@@ -55,6 +56,7 @@ def compute_proxy_nodes_from_esn(esn, trials=10):
     run_data_base = np.zeros((trials, num_nodes)) 
     avg_goal_values = []
     avg_proxy_values = []
+    esn.reset_seed()
     for k in range(trials):
         # Generate random agent actions
         action_node_values = module_ESN.get_base_action_value(len(esn.action_nodes))
@@ -101,6 +103,7 @@ def optimize_node(esn,  trials, proxy_nodes, is_goal=False):
         """
         proxy_samples    = np.asarray([])
         goal_samples    = np.asarray([])
+        esn.reset_seed()
         for j in range(trials): 
             action_node_values = module_ESN.get_directed_action_value(action_value , agent_action, actionsize = len(esn.action_nodes))
             states = esn.run(agent_values=action_node_values)
@@ -126,7 +129,6 @@ def optimize_node(esn,  trials, proxy_nodes, is_goal=False):
     return (goal_value_on_max_proxy, max_proxy_value, correlation_on_max_proxy)
 
 def parallel_compute_proxy_failure(param_ESN):
-    np.random.seed(param_ESN['seed'])
     esn = module_ESN.EchoStateNetwork(param_ESN['n'],  spectral_radius=param_ESN['spectral_radius'], alpha = param_ESN['alpha'], 
                                 avg_number_of_edges=param_ESN['avg_number_of_edges'], proxy_discard=param_ESN['proxy_discard'],
                                 goal_discard=param_ESN['goal_discard'], measure_time=param_ESN['measure_time'], seed=param_ESN["seed"])
@@ -165,7 +167,6 @@ def parallel_compute_correlation(param_exp,param_ESN):
 
 
 def generate_experimental_data(filename, param_grid, number_of_instances, intention = 'a', skip_to = 0,seed_skip = 0):
-    np.random.seed(0)
     # creates a list of the parameters that will vary
     varying_params = [a for a in param_grid.keys() if len(param_grid[a]) > 1]
     # Create a list of all combinations of parameters
