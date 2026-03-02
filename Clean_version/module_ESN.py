@@ -39,7 +39,7 @@ class EchoStateNetwork:
         if seed is None:
             seed = np.random.randint(0, 1000000)
         self.seed = seed
-        np.random.seed(seed)
+        self.rng = np.random.default_rng(seed)
         self.W = self._initialize_useful_reservoir()
         self.connectivity = np.where(self.W !=0, 1, 0)
         self.state = np.zeros(n)
@@ -64,9 +64,9 @@ class EchoStateNetwork:
         connected_nodes = list(self.action_nodes)
         while unconnected_nodes:
             # Randomly select an action node to connect to
-            connect_to = np.random.choice(unconnected_nodes)
-            connect_from = np.random.choice(connected_nodes)
-            W[connect_to,connect_from] = np.random.rand()-0.5
+            connect_to = self.rng.choice(unconnected_nodes)
+            connect_from = self.rng.choice(connected_nodes)
+            W[connect_to,connect_from] = self.rng.random()-0.5
             unconnected_nodes.remove(connect_to)
             connected_nodes.append(connect_to)
         
@@ -75,8 +75,8 @@ class EchoStateNetwork:
 
         for k in range(self.n):
             for j in range(self.n):
-                if np.random.rand() < probability_of_edge and W[k, j] == 0 and k != j:
-                    W[k, j] = np.random.rand() - 0.5
+                if self.rng.random() < probability_of_edge and W[k, j] == 0 and k != j:
+                    W[k, j] = self.rng.random() - 0.5
         max_eigval = np.max(np.abs(np.linalg.eigvals(W)))
         return W * (self.spectral_radius / max_eigval) if max_eigval > 0 else W
 
@@ -140,8 +140,24 @@ class EchoStateNetwork:
         return self.n+1
     
     def reset_seed(self):
-        np.random.seed(self.seed)
+        self.rng = np.random.default_rng(self.seed)
 
+    def get_base_action_value(self, size = None):
+        """
+        Compute the action values if all actions are neutral according to a beta distribution between -1 and 1 of parameter 2 and 2
+        """
+        a, b = (2,2)
+        return 2*self.rng.beta( a, b, size)-1
+
+    def get_directed_action_value(self, action_value , target_node, actionsize = None):
+        """
+        Compute the action values if one action is targetted to be enforced (+1) or reduced (-1) 
+        """
+        params = [(2,2),(20,2),(2,20)]
+        A_vals = self.get_base_action_value(actionsize)
+        a,b = params[action_value]
+        A_vals[target_node]= 2*self.rng.beta( a, b)-1
+        return A_vals
 
 def compute_averages(states, obj_nodes, proxy_nodes):
     """
@@ -165,19 +181,3 @@ def compute_averages(states, obj_nodes, proxy_nodes):
     avg_proxy = np.mean(states[:, proxy_nodes])
     return avg_obj, avg_proxy
 
-def get_base_action_value(size = None):
-    """
-    Compute the action values if all actions are neutral according to a beta distribution between -1 and 1 of parameter 2 and 2
-    """
-    a, b = (2,2)
-    return 2*np.random.beta( a, b, size)-1
-
-def get_directed_action_value(action_value , target_node, actionsize = None):
-    """
-    Compute the action values if one action is targetted to be enforced (+1) or reduced (-1) 
-    """
-    params = [(2,2),(20,2),(2,20)]
-    A_vals = get_base_action_value(actionsize)
-    a,b = params[action_value]
-    A_vals[target_node]= 2*np.random.beta( a, b)-1
-    return A_vals

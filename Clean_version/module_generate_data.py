@@ -7,45 +7,8 @@ from itertools import product
 import warnings
 import module_graph
 
-def optimize_node(esn,  trials, proxy_nodes, is_goal=False):
 
-    n = esn.n 
-    num_action_nodes = len(esn.action_nodes)
-    start_time = esn.proxy_discard*(not is_goal) + esn.goal_discard*is_goal
-    end_time = start_time + esn.measure_time
-    # define function to test an agent action 
-    def test_agent_action(agent_action, action_value):
-        """
-        Test the average value of an action node if all other nodes are set to random values
-        """
-        proxy_samples    = np.asarray([])
-        goal_samples    = np.asarray([])
-        esn.reset_seed()
-        for j in range(trials): 
-            action_node_values = module_ESN.get_directed_action_value(action_value , agent_action, actionsize = len(esn.action_nodes))
-            states = esn.run(agent_values=action_node_values)
-            proxy_samples = np.concatenate((proxy_samples,np.mean(states[start_time:end_time, proxy_nodes], axis=0)))
-            goal_samples = np.concatenate((goal_samples,np.mean(states[esn.goal_discard:esn.goal_discard+esn.measure_time, esn.goal], axis=0)))
-        if not is_goal:
-            correl_node_goal = np.corrcoef(proxy_samples, goal_samples)[0, 1]
-        else:
-            correl_node_goal = 0
-
-        return np.mean(proxy_samples), np.mean(goal_samples), correl_node_goal
-    max_proxy_value = -1
-    goal_value_on_max_proxy = -1
-    correlation_on_max_proxy = 0
-    for i in range(num_action_nodes):
-        for val in [-1, 1]:
-            proxy_value, goal_value, correl_node_goal = test_agent_action(i, val)
-            if proxy_value > max_proxy_value:
-                max_proxy_value = proxy_value
-                goal_value_on_max_proxy = goal_value
-                correlation_on_max_proxy = correl_node_goal
-
-    return (goal_value_on_max_proxy, max_proxy_value, correlation_on_max_proxy)
-
-def compute_proxy_nodes_from_esn(esn, trials=10):  
+def compute_proxy_nodes_from_esn(esn, trials):  
     """
     Compute proxy nodes from an Echo State Network (ESN) by running trials with random agent actions.
     The function calculates the average values of the goal node and the proxy nodes based on the ESN's states.
@@ -59,15 +22,14 @@ def compute_proxy_nodes_from_esn(esn, trials=10):
     esn.reset_seed()
     for k in range(trials):
         # Generate random agent actions
-        action_node_values = module_ESN.get_base_action_value(len(esn.action_nodes))
-        
+        action_node_values = esn.get_base_action_value(len(esn.action_nodes))
         # Run the ESN with the random agent actions
         states = esn.run( agent_values=action_node_values)
         data_run =  np.mean(states[esn.proxy_discard: esn.proxy_discard + esn.measure_time, :], axis=0)
         data_run[esn.goal] = np.mean(states[esn.goal_discard: esn.goal_discard+ esn.measure_time, esn.goal], axis=0)
         run_data_base[k] = data_run
         # Compute the average values 
-        avg_goal_values.append(np.mean(states[:, esn.goal], axis=0))
+        avg_goal_values.append(np.mean(states[esn.goal_discard: esn.goal_discard+ esn.measure_time, esn.goal], axis=0))
     correlations = np.mean(np.corrcoef(run_data_base, rowvar= False)[:, esn.goal], axis=1)#here the runs are on axis 0 and the nodes on axis 1
 
     bin_edges = np.linspace(-1, 1, 100)
@@ -105,7 +67,7 @@ def optimize_node(esn,  trials, proxy_nodes, is_goal=False):
         goal_samples    = np.asarray([])
         esn.reset_seed()
         for j in range(trials): 
-            action_node_values = module_ESN.get_directed_action_value(action_value , agent_action, actionsize = len(esn.action_nodes))
+            action_node_values = esn.get_directed_action_value(action_value , agent_action, actionsize = len(esn.action_nodes))
             states = esn.run(agent_values=action_node_values)
             proxy_samples = np.concatenate((proxy_samples,np.mean(states[start_time:end_time, proxy_nodes], axis=0)))
             goal_samples = np.concatenate((goal_samples,np.mean(states[esn.goal_discard:esn.goal_discard+esn.measure_time, esn.goal], axis=0)))
@@ -121,11 +83,10 @@ def optimize_node(esn,  trials, proxy_nodes, is_goal=False):
     for i in range(num_action_nodes):
         for val in [-1, 1]:
             proxy_value, goal_value, correl_node_goal = test_agent_action(i, val)
-            if proxy_value > max_proxy_value:
+            if (not(is_goal)  and proxy_value > max_proxy_value) or (is_goal and goal_value> goal_value_on_max_proxy):
                 max_proxy_value = proxy_value
                 goal_value_on_max_proxy = goal_value
                 correlation_on_max_proxy = correl_node_goal
-
     return (goal_value_on_max_proxy, max_proxy_value, correlation_on_max_proxy)
 
 def parallel_compute_proxy_failure(param_ESN):
@@ -137,7 +98,7 @@ def parallel_compute_proxy_failure(param_ESN):
     correlation_base = np.mean(correlations[proxy_nodes])
     correlation_std = np.std(correlations)
     maxed_goal_value, maxed_proxy_value, correlation_on_max_proxy = optimize_node(esn,  param_ESN['trials'], proxy_nodes)
-    optimal_goal_value, optimal_proxy_value, correlation_on_optimal_proxy =  optimize_node(esn,  param_ESN['trials'], esn.goal, is_goal=True)
+    optimal_goal_value, optimal_proxy_value, correlation_on_optimal_proxy =  optimize_node(esn,  param_ESN['trials'], proxy_nodes, is_goal=True)
     to_return = {
         'correlation_std': correlation_std,
         'maxed_goal_value': maxed_goal_value,
@@ -203,8 +164,8 @@ def generate_experimental_data(filename, param_grid, number_of_instances, intent
             name = 'ESN'+ "".join(['_'+a +'_'+ str(b) for (a,b) in list(zip(param_names, params)) if a in varying_params])
             print("instance", k+1, "out of ", len(param_combinations), "name", name)
             # run the parallel computation of proxy nodes
-            List_output = Parallel(n_jobs=10, return_as='list')(
-                [delayed(parallel_compute_proxy_failure)( dict(param_ESN, seed= i+ seed_skip)) for i in range(number_of_instances)]
+            List_output = Parallel(n_jobs=16, return_as='list')(
+                [delayed(parallel_compute_proxy_failure)( dict(param_ESN, seed= i+ seed_skip+k)) for i in range(number_of_instances)]
             )
             for temp_dict in List_output:
                 writer.writerow(param_ESN | temp_dict)
