@@ -92,7 +92,8 @@ def optimize_node(esn,  trials, proxy_nodes, is_goal=False):
 def parallel_compute_proxy_failure(param_ESN):
     esn = module_ESN.EchoStateNetwork(param_ESN['n'], alpha = param_ESN['alpha'], 
                                 avg_number_of_edges=param_ESN['avg_number_of_edges'], proxy_discard=param_ESN['proxy_discard'],
-                                goal_discard=param_ESN['goal_discard'], measure_time=param_ESN['measure_time'], seed=param_ESN["seed"])
+                                goal_discard=param_ESN['goal_discard'], measure_time=param_ESN['measure_time'], seed=param_ESN["seed"],
+                                weight_range=param_ESN['weight_range'])
 
     proxy_nodes, goal_base, proxy_base, correlations, bin_indices = compute_proxy_nodes_from_esn(esn, trials=param_ESN['trials'])
     correlation_base = np.mean(correlations[proxy_nodes])

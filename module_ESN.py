@@ -10,7 +10,8 @@ class EchoStateNetwork:
                 goal_discard = 100, 
                 measure_time = 50, 
                 seed = None, 
-                number_of_action_nodes =16):
+                number_of_action_nodes =16, 
+                weight_range = 1):
         """
         Initialize the Echo State Network (ESN) ensuring full percolation of action nodes.
         This version of the ESN ensures that all action nodes are connected to each other, allowing for full percolation.
@@ -38,6 +39,7 @@ class EchoStateNetwork:
             seed = np.random.randint(0, 1000000)
         self.seed = seed
         self.rng = np.random.default_rng(seed)
+        self.weight_range = weight_range
         self.W = self._initialize_useful_reservoir()
         self.connectivity = np.where(self.W !=0, 1, 0)
         self.state = np.zeros(n)
@@ -64,7 +66,7 @@ class EchoStateNetwork:
             # Randomly select an action node to connect to
             connect_to = self.rng.choice(unconnected_nodes)
             connect_from = self.rng.choice(connected_nodes)
-            W[connect_to,connect_from] = 2*self.rng.random()-1
+            W[connect_to,connect_from] = 2*self.weight_range*self.rng.random()-self.weight_range
             unconnected_nodes.remove(connect_to)
             connected_nodes.append(connect_to)
         
@@ -74,7 +76,7 @@ class EchoStateNetwork:
         for k in range(self.n):
             for j in range(self.n):
                 if self.rng.random() < probability_of_edge and W[k, j] == 0 and k != j:
-                    W[k, j] = self.rng.random() - 0.5
+                    W[k, j] = 2*self.weight_range*self.rng.random()-self.weight_range
         self.spectral_radius = np.max(np.abs(np.linalg.eigvals(W)))
         return W
 
