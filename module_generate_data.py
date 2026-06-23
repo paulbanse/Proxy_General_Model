@@ -1,3 +1,4 @@
+
 import module_ESN
 import numpy as np
 import csv
@@ -128,6 +129,29 @@ def parallel_compute_correlation(param_exp,param_ESN):
     } 
     return to_return
 
+def parallel_compute_mean_regression(param_ESN, seed = 0):
+    esn = module_ESN.EchoStateNetwork(param_ESN['n'], alpha = param_ESN['alpha'], 
+                                avg_number_of_edges=param_ESN['avg_number_of_edges'], proxy_discard=param_ESN['proxy_discard'],
+                                goal_discard=param_ESN['goal_discard'], measure_time=param_ESN['measure_time'], seed=seed,
+                                weight_range=param_ESN['weight_range'])
+
+    proxy_nodes, goal_base, proxy_base, correlations, bin_indices = compute_proxy_nodes_from_esn(esn, trials=param_ESN['trials'])
+    correlation_base = np.mean(correlations[proxy_nodes])
+    correlation_std = np.std(correlations)
+    # Do it another time with the same esn but with a different seed to get a different run
+    esn.seed += 1
+    proxy_nodes2, goal_base2, proxy_base2, correlations2, bin_indices2 = compute_proxy_nodes_from_esn(esn, trials=param_ESN['trials'])
+    correlation_base2 = np.mean(correlations2[proxy_nodes2])
+    correlation_wrong2 = np.mean(correlations2[proxy_nodes])
+    correlation_std2 = np.std(correlations2)
+    return {
+        'diff_corr': correlation_base - correlation_base2,
+        'loss_corr': correlation_base - correlation_wrong2,
+        'diff_std': correlation_std - correlation_std2, 
+        'changed_proxy': proxy_nodes != proxy_nodes2
+    }
+    
+    
 
 def generate_experimental_data(filename, param_grid, number_of_instances, intention = 'a', skip_to = 0,seed_skip = 0, nb_cores = 20):
     # creates a list of the parameters that will vary
@@ -162,7 +186,8 @@ def generate_experimental_data(filename, param_grid, number_of_instances, intent
             params = param_combinations[k]
             # Create a dictionary of parameters
             param_ESN = dict(zip(param_names, params))
-            param_ESN['trials'] = 50
+            if 'trials' not in param_ESN:
+                param_ESN['trials'] = 50
             name = 'ESN'+ "".join(['_'+a +'_'+ str(b) for (a,b) in list(zip(param_names, params)) if a in varying_params])
             print("instance", k+1, "out of ", len(param_combinations), "name", name)
             # run the parallel computation of proxy nodes
@@ -173,5 +198,4 @@ def generate_experimental_data(filename, param_grid, number_of_instances, intent
                 writer.writerow(param_ESN | temp_dict)
             fd.flush()
             
-
 

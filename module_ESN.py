@@ -139,8 +139,8 @@ class EchoStateNetwork:
         
         return self.n+1
     
-    def reset_seed(self):
-        self.rng = np.random.default_rng(self.seed)
+    def reset_seed(self, add = 0):
+        self.rng = np.random.default_rng(self.seed+add)
 
     def get_base_action_value(self, size = None):
         """
@@ -149,14 +149,15 @@ class EchoStateNetwork:
         a, b = (2,2)
         return 2*self.rng.beta( a, b, size)-1
 
-    def get_directed_action_value(self, action_value , target_node, actionsize = None):
+    def get_directed_action_value(self, action_value , target_node, actionsize):
         """
         Compute the action values if one action is targetted to be enforced (+1) or reduced (-1) 
         """
         params = [(2,2),(20,2),(2,20)]
-        A_vals = self.get_base_action_value(actionsize)
+        A_vals = self.get_base_action_value(actionsize-1)
         a,b = params[action_value]
-        A_vals[target_node]= 2*self.rng.beta( a, b)-1
+        target_val = 2*self.rng.beta( a, b)-1
+        A_vals =np.insert(A_vals,target_node, target_val)
         return A_vals
 
 def compute_averages(states, obj_nodes, proxy_nodes):
