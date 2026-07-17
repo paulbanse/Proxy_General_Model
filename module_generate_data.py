@@ -153,7 +153,7 @@ def parallel_compute_mean_regression(param_ESN, seed = 0):
     
     
 
-def generate_experimental_data(filename, param_grid, number_of_instances, intention = 'a', skip_to = 0,seed_skip = 0, nb_cores = 20):
+def generate_experimental_data(filename, param_grid, number_of_instances, intention = 'a', skip_to = 0,seed_skip = 0, nb_cores = 20, funct = parallel_compute_proxy_failure):
     # creates a list of the parameters that will vary
     varying_params = [a for a in param_grid.keys() if len(param_grid[a]) > 1]
     # Create a list of all combinations of parameters
@@ -177,7 +177,9 @@ def generate_experimental_data(filename, param_grid, number_of_instances, intent
                       'maxed_goal_value','goal_base',
                       'maxed_proxy_value','proxy_base',
                       'correlation_on_max_proxy','correlation_base',
-                      'optimal_goal_value','optimal_proxy_value'] 
+                      'optimal_goal_value','optimal_proxy_value']
+        if funct == parallel_compute_mean_regression:
+            fieldnames = ['diff_corr', 'loss_corr', 'diff_std', 'changed_proxy']
         writer = csv.DictWriter(fd, fieldnames=param_names + fieldnames)
         if intention == 'w':
             writer.writeheader()
@@ -192,7 +194,7 @@ def generate_experimental_data(filename, param_grid, number_of_instances, intent
             print("instance", k+1, "out of ", len(param_combinations), "name", name)
             # run the parallel computation of proxy nodes
             List_output = Parallel(n_jobs=nb_cores, return_as='list')(
-                [delayed(parallel_compute_proxy_failure)( dict(param_ESN, seed= i+ seed_skip+k)) for i in range(number_of_instances)]
+                [delayed(funct)( dict(param_ESN, seed= i+ seed_skip+k)) for i in range(number_of_instances)]
             )
             for temp_dict in List_output:
                 writer.writerow(param_ESN | temp_dict)
